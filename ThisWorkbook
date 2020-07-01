@@ -1,0 +1,89 @@
+Public codigo As String
+Public sfile As String
+Public NOM_MODULO  As String
+Public cuenta As String
+
+Private Sub Workbook_Open(): On Error Resume Next
+LeerCarpeta
+End Sub
+
+Private Sub LeerCarpeta()
+ Dim File As String, RUTA_CARPETA As String
+ 
+ RUTA_CARPETA = ThisWorkbook.Path & "\"
+ 
+    File = Dir(RUTA_CARPETA)
+    Do While Len(File) > 0
+        
+        If UCase(File) Like "*.TXT" Then
+        
+        Actualiza File, RUTA_CARPETA & File
+        
+        End If
+        File = Dir
+    Loop
+If cuenta <> "" Then MsgBox "Se actualizaron los siguientes Modulos:" & cuenta, vbInformation, "Actualización aplicada"
+    
+End Sub
+
+
+Private Function Actualiza(Modulo As String, ruta As String): On Error Resume Next
+'Comprobamos si existe una nueva versión del código
+Dim oVBMod As Object
+Dim ReadData As String
+Dim x, y As Double
+Call comprueba
+sfile = ruta 'Ruta del archivo de actualización
+NOM_MODULO = Split(Modulo, ".")(0) 'Nombre del modulo que se actualizara
+
+ Open sfile For Input As #1: Line Input #1, ReadData: Close #1
+Set oVBMod = ThisWorkbook.VBProject.VBComponents(NOM_MODULO)
+x = Val(Right(ReadData, Len(ReadData) - 1))
+y = Val(Right(oVBMod.CodeModule.Lines(1, 1), Len(oVBMod.CodeModule.Lines(1, 1)) - 1))
+If x > _
+y Then _
+cuenta = cuenta & Chr(10) & NOM_MODULO: Call GetCode
+
+End Function
+
+Private Sub GetCode(): On Error Resume Next
+'Creamos y copiamos el codigo al modulo
+Dim str As Object
+Dim NewModule As Object
+Call Ext_Txt
+ThisWorkbook.VBProject.VBComponents.Remove ThisWorkbook.VBProject.VBComponents(NOM_MODULO)
+Set NewModule = ThisWorkbook.VBProject.VBComponents.Add(vbext_ct_StdModule)
+With NewModule
+.Name = NOM_MODULO
+.CodeModule.InsertLines 1, codigo
+End With
+End Sub
+
+Private Sub Ext_Txt(): On Error Resume Next
+'Extraemos el codigo del txt
+Dim fso As Object
+Dim ts As Object
+codigo = Empty
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.GetFile(sfile).OpenAsTextStream(1, -2)
+    codigo = ts.readall
+    ts.Close
+End Sub
+
+Private Sub comprueba()
+'Comprobamos los permisos de seguridad para excel
+Dim VBP As Object
+If Val(Application.Version) >= 10 Then
+    On Error Resume Next
+    Set VBP = ActiveWorkbook.VBProject
+    If Err.Number <> 0 Then
+        MsgBox "Parece que la configuración de seguridad no permite que se ejecute el proceso de actualización de Macros." _
+          & vbCrLf & vbCrLf & "Para cambiar tu configuración de seguridad:" _
+          & vbCrLf & vbCrLf & " 1. Selecciona Opciones - Centro de confianza - Configuración." & vbCrLf _
+          & " 2. Selecciona Macros y activa la casilla ''Confiar en el acceso al modelo de objetos de proyectos de vba''" & vbCrLf _
+          & " 3. Cierra y vuelve a abrir el programa.'", _
+          vbCritical, "REVISAR !!"
+        End
+    End If
+End If
+End Sub
